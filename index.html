@@ -6,25 +6,25 @@
     <title>LRC/SUB Sync Editor - Fluent</title>
     <style>
         :root {
-            var(--bg): #202020;
-            --surface: #2c2c2c;
-            --surface-hover: #3a3a3a;
-            --surface-active: #282828;
-            --border: rgba(255, 255, 255, 0.08);
-            --border-hover: rgba(255, 255, 255, 0.15);
-            --text: #ffffff;
-            --text-sec: #cccccc;
-            --accent: #60cdff;
-            --accent-hover: #4cc2ff;
-            --accent-active: #28a8ea;
-            --waveform-bg: #1c1c1c;
+            --bg: #1e1e1e;
+            --surface: #252526;
+            --surface-hover: #2d2d2d;
+            --surface-active: #333333;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-hover: rgba(255, 255, 255, 0.12);
+            --text: #cccccc;
+            --text-bright: #ffffff;
+            --accent: #56b6c2;
+            --accent-hover: #4aa1ab;
+            --accent-active: #3d8891;
+            --waveform-bg: #181818;
             --radius-lg: 8px;
             --radius-sm: 4px;
         }
 
         body {
             margin: 0; padding: 0;
-            background: #202020; color: var(--text);
+            background: var(--bg); color: var(--text);
             font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
             overflow: hidden; user-select: none;
         }
@@ -38,25 +38,23 @@
         }
 
         .file-group { display: flex; flex-direction: column; gap: 0.5rem; font-size: 14px; }
-        .file-group input[type="file"] {
-            font-family: inherit; font-size: 13px; color: var(--text-sec);
-        }
+        .file-group input[type="file"] { font-family: inherit; font-size: 13px; color: var(--text); }
         
         button {
             background: var(--surface); color: var(--text);
             border: 1px solid var(--border); padding: 6px 16px; 
             border-radius: var(--radius-sm); cursor: pointer; 
-            transition: all 0.15s ease; font-family: inherit; font-size: 14px;
+            transition: all 0.1s ease; font-family: inherit; font-size: 13px;
         }
-        button:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--border-hover); }
-        button:active:not(:disabled) { background: var(--surface-active); transform: scale(0.98); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--border-hover); color: var(--text-bright); }
+        button:active:not(:disabled) { background: var(--surface-active); transform: translateY(1px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
         
         button.btn-accent { background: var(--accent); color: #000; border: none; font-weight: 500; }
         button.btn-accent:hover:not(:disabled) { background: var(--accent-hover); }
         button.btn-accent:active:not(:disabled) { background: var(--accent-active); }
-        button.btn-nav-mark { background: rgba(96, 205, 255, 0.1); border-color: rgba(96, 205, 255, 0.3); color: var(--accent); }
-        button.btn-nav-mark:hover:not(:disabled) { background: rgba(96, 205, 255, 0.2); }
+        button.btn-nav-mark { background: rgba(86, 182, 194, 0.1); border-color: rgba(86, 182, 194, 0.2); color: var(--accent); }
+        button.btn-nav-mark:hover:not(:disabled) { background: rgba(86, 182, 194, 0.15); }
 
         #main-screen {
             display: none; height: 100vh; width: 100vw;
@@ -65,7 +63,7 @@
         }
 
         #app-container {
-            width: 100%; max-width: 1300px; height: 100%;
+            width: 100%; max-width: 1400px; height: 100%;
             display: flex; flex-direction: column;
             background: var(--surface);
             border: 1px solid var(--border);
@@ -74,52 +72,78 @@
             overflow: hidden;
         }
 
-        #workspace {
-            flex: 1; position: relative; min-height: 0; display: flex;
-        }
+        #workspace { flex: 1; position: relative; min-height: 0; display: flex; }
 
         #canvas-container {
-            width: 400px; height: 100%;
+            width: 400px; height: 100%; flex-shrink: 0;
             border-right: 1px solid var(--border); 
             background: var(--waveform-bg);
             position: relative;
         }
+        
         canvas { display: block; width: 100%; height: 100%; cursor: ns-resize; }
 
         #lrc-container {
             flex: 1; height: 100%; position: relative;
             overflow: hidden; pointer-events: none;
-            background: rgba(30, 30, 30, 0.5);
+            background: var(--surface);
         }
 
         .lrc-line {
-            position: absolute; left: 0; right: 16px;
-            padding: 6px 16px; font-size: 15px;
-            border-top: 1px solid var(--border);
+            position: absolute; left: 16px; right: 16px;
+            padding: 8px 16px; 
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             pointer-events: auto; cursor: row-resize;
-            background: var(--surface);
-            border-left: 3px solid transparent;
-            color: var(--text-sec);
-            transition: background 0.1s;
+            background: rgba(30, 30, 30, 0.6);
+            color: var(--text);
+            transition: background 0.1s, border-color 0.1s;
+            display: flex; flex-direction: column; gap: 4px;
         }
-        .lrc-line:hover { background: var(--surface-hover); border-left-color: var(--accent); color: var(--text); }
-        .lrc-line.dragging { background: var(--surface-active); border-left-color: var(--accent-hover); z-index: 100; color: var(--text); }
+        
+        .lrc-line:hover { 
+            background: var(--surface-hover); 
+            border-color: rgba(86, 182, 194, 0.3); 
+            color: var(--text-bright); 
+        }
+        
+        .lrc-line.dragging { 
+            background: var(--surface-active); 
+            border-color: var(--accent); 
+            z-index: 100; 
+            color: var(--text-bright); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .lrc-time-badge {
+            font-size: 11px;
+            font-variant-numeric: tabular-nums;
+            color: var(--accent);
+            opacity: 0.8;
+            user-select: none;
+        }
+
+        .lrc-text-content { font-size: 14px; }
 
         #player-panel {
-            background: rgba(44, 44, 44, 0.95);
+            background: var(--bg);
             border-top: 1px solid var(--border);
             display: flex; flex-direction: column; justify-content: center;
-            padding: 12px 24px; box-sizing: border-box; gap: 12px;
+            padding: 16px 24px; box-sizing: border-box; gap: 16px;
         }
 
-        .nav-bar { display: flex; align-items: center; gap: 16px; font-variant-numeric: tabular-nums; font-size: 13px; }
+        .nav-bar { 
+            display: flex; align-items: center; gap: 16px; 
+            font-variant-numeric: tabular-nums; font-size: 12px; color: var(--text-bright);
+        }
+        
         input[type="range"] {
             flex: 1; height: 4px; border-radius: 2px;
-            background: rgba(255, 255, 255, 0.2); outline: none;
+            background: rgba(255, 255, 255, 0.1); outline: none;
             -webkit-appearance: none; cursor: pointer;
         }
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 16px; height: 16px;
+            -webkit-appearance: none; width: 14px; height: 14px;
             border-radius: 50%; background: var(--accent);
             transition: transform 0.1s;
         }
@@ -130,8 +154,9 @@
         
         select {
             background: var(--surface); color: var(--text);
-            border: 1px solid var(--border); padding: 4px 8px;
-            border-radius: var(--radius-sm); outline: none; font-family: inherit; font-size: 13px;
+            border: 1px solid var(--border); padding: 5px 8px;
+            border-radius: var(--radius-sm); outline: none; 
+            font-family: inherit; font-size: 12px;
         }
         select:hover { border-color: var(--border-hover); }
     </style>
@@ -139,7 +164,7 @@
 <body>
 
     <div id="setup-screen">
-        <h2 style="margin-top:0; font-weight: 600;">Синхронизация LRC/SUB</h2>
+        <h2 style="margin-top:0; font-weight: 600; color: var(--text-bright);">Синхронизация LRC/SUB</h2>
         <div class="file-group">
             <label>Аудиофайл (MP3/WAV)</label>
             <input type="file" id="file-audio" accept="audio/*">
@@ -327,26 +352,11 @@
                     switch (e.code) {
                         case 'Space':
                         case 'KeyW':
-                        case 'KeyS':
-                            e.preventDefault();
-                            this.togglePlay();
-                            break;
-                        case 'KeyA':
-                            e.preventDefault();
-                            this.seek(this.centerTime - 1);
-                            break;
-                        case 'KeyD':
-                            e.preventDefault();
-                            this.seek(this.centerTime + 1);
-                            break;
-                        case 'KeyQ':
-                            e.preventDefault();
-                            this.seekToMark('prev');
-                            break;
-                        case 'KeyE':
-                            e.preventDefault();
-                            this.seekToMark('next');
-                            break;
+                        case 'KeyS': e.preventDefault(); this.togglePlay(); break;
+                        case 'KeyA': e.preventDefault(); this.seek(this.centerTime - 1); break;
+                        case 'KeyD': e.preventDefault(); this.seek(this.centerTime + 1); break;
+                        case 'KeyQ': e.preventDefault(); this.seekToMark('prev'); break;
+                        case 'KeyE': e.preventDefault(); this.seekToMark('next'); break;
                     }
                 });
             }
@@ -383,8 +393,22 @@
                     const div = document.createElement('div');
                     div.className = 'lrc-line';
                     div.dataset.index = index;
-                    div.textContent = item.text || '[Пустая строка]';
+                    
+                    // DOM структура узла фразы: бэйдж времени + текст[cite: 1]
+                    const timeSpan = document.createElement('div');
+                    timeSpan.className = 'lrc-time-badge';
+                    
+                    const textSpan = document.createElement('div');
+                    textSpan.className = 'lrc-text-content';
+                    textSpan.textContent = item.text || '[Пустая строка]';
+                    
+                    div.appendChild(timeSpan);
+                    div.appendChild(textSpan);
+                    
                     item.el = div;
+                    item.elTime = timeSpan;
+                    item.lastTimeStr = '';
+                    
                     this.ui.lrcContainer.appendChild(div);
                 });
 
@@ -436,7 +460,7 @@
                 
                 const sorted = [...this.lrcData].sort((a, b) => a.time - b.time);
                 let targetTime = this.centerTime;
-                const epsilon = 0.05; // 50ms tolerance
+                const epsilon = 0.05; 
 
                 if (direction === 'prev') {
                     for (let i = sorted.length - 1; i >= 0; i--) {
@@ -496,7 +520,7 @@
                 const halfW = width / 2;
                 const halfH = height / 2;
 
-                this.ctx.fillStyle = '#1c1c1c';
+                this.ctx.fillStyle = '#181818';
                 this.ctx.fillRect(0, 0, width, height);
                 if (!this.buffer) return;
 
@@ -510,8 +534,29 @@
                 const endSample = Math.min(data.length, Math.ceil(endTime * sampleRate));
                 const step = Math.max(1, Math.ceil((endSample - startSample) / height));
 
+                // 1. Отрисовка секундной сетки в левой половине канваса
+                const startSec = Math.ceil(startTime);
+                const endSec = Math.floor(endTime);
+                
+                this.ctx.font = '10px monospace';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.textAlign = 'left';
+
+                for (let s = startSec; s <= endSec; s++) {
+                    const y = halfH + (s - this.centerTime) * this.zoom;
+                    
+                    // Риска на левую половину
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+                    this.ctx.fillRect(0, y, halfW, 1);
+                    
+                    // Метка времени
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+                    this.ctx.fillText(this.formatTimeSeconds(s), 6, y - 8);
+                }
+
+                // 2. Отрисовка амплитуды[cite: 1]
                 this.ctx.beginPath();
-                this.ctx.strokeStyle = '#60cdff';
+                this.ctx.strokeStyle = '#56b6c2';
                 this.ctx.lineWidth = 1;
 
                 for (let y = 0; y < height; y++) {
@@ -531,7 +576,8 @@
                 }
                 this.ctx.stroke();
 
-                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                // 3. Соединительные линии LRC
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
                 this.ctx.setLineDash([4, 4]);
                 this.ctx.beginPath();
                 this.lrcData.forEach(item => {
@@ -544,24 +590,29 @@
                 this.ctx.stroke();
                 this.ctx.setLineDash([]);
 
-                this.ctx.strokeStyle = '#ffffff';
-                this.ctx.lineWidth = 1.5;
-                this.ctx.beginPath();
-                this.ctx.moveTo(0, halfH);
-                this.ctx.lineTo(width, halfH);
-                this.ctx.stroke();
+                // 4. Playhead
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(0, halfH - 0.5, width, 1);
             }
 
             updateLrcDOM() {
                 const halfH = this.canvasLogicalHeight / 2;
+                
                 this.lrcData.forEach(item => {
                     const y = halfH + (item.time - this.centerTime) * this.zoom;
-                    item.el.style.transform = `translateY(${y - 14}px)`;
+                    item.el.style.transform = `translateY(${y - 25}px)`; // Сдвиг центра блока
+                    
+                    // Обновление метки времени без излишних перерисовок DOM (только при изменении)
+                    const timeStr = this.formatTime(item.time);
+                    if (item.lastTimeStr !== timeStr) {
+                        item.elTime.textContent = timeStr;
+                        item.lastTimeStr = timeStr;
+                    }
                     
                     if (y < -100 || y > this.canvasLogicalHeight + 100) {
                         if (item.el.style.display !== 'none') item.el.style.display = 'none';
                     } else {
-                        if (item.el.style.display === 'none') item.el.style.display = 'block';
+                        if (item.el.style.display === 'none') item.el.style.display = 'flex';
                     }
                 });
             }
@@ -578,6 +629,12 @@
                 const s = Math.floor(seconds % 60).toString().padStart(2, '0');
                 const ms = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
                 return `${m}:${s}.${ms}`;
+            }
+
+            formatTimeSeconds(seconds) {
+                const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+                return `${m}:${s}`;
             }
 
             formatTimeFull(seconds) {
