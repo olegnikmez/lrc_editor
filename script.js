@@ -114,22 +114,49 @@ class LrcSyncApp {
             if (textEl) this.initTextEdit(textEl);
         });
 
-        // Делегирование событий клика по иконке редактирования
+        // Делегирование событий клика по иконкам действий
         this.ui.lrcContainer.addEventListener('click', (e) => {
-            const icon = e.target.closest('.lrc-edit-icon');
-            if (icon) {
-                const textEl = icon.parentElement.querySelector('.lrc-text-content');
+            // Обработка редактирования
+            const editBtn = e.target.closest('.lrc-edit-icon');
+            if (editBtn) {
+                const textEl = editBtn.closest('.lrc-line').querySelector('.lrc-text-content');
                 this.initTextEdit(textEl);
+                return;
+            }
+
+            // Обработка удаления
+            const deleteBtn = e.target.closest('.lrc-delete-icon');
+            if (deleteBtn) {
+                if (window.confirm('Удалить этот блок текста?')) {
+                    const lineEl = deleteBtn.closest('.lrc-line');
+                    const index = parseInt(lineEl.dataset.index, 10);
+                    
+                    // 1. Удаляем из стейта
+                    this.lrcData.splice(index, 1);
+                    
+                    // 2. Удаляем из DOM
+                    lineEl.remove();
+                    
+                    // 3. Переиндексируем оставшиеся узлы
+                    const remainingLines = this.ui.lrcContainer.querySelectorAll('.lrc-line');
+                    remainingLines.forEach((el, newIdx) => {
+                        el.dataset.index = newIdx;
+                    });
+                    
+                    // 4. Обновляем канвас (удаляем маркер линии субтитра)
+                    if (!this.isPlaying) this.render();
+                }
             }
         });
 
         this.ui.lrcContainer.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.lrc-edit-icon') || e.target.isContentEditable) return;
+            // Блокировка drag & drop на обеих кнопках действий
+            if (e.target.closest('.lrc-action-icon') || e.target.isContentEditable) return;
 
             const lineEl = e.target.closest('.lrc-line');
             if (!lineEl) return;
             
-            // Блокируем дрейф времени: перемещение метки требует стабильной шкалы
+            // Блокируем дрейф времени
             if (this.isPlaying) this.pause();
 
             const index = parseInt(lineEl.dataset.index, 10);
@@ -340,13 +367,25 @@ class LrcSyncApp {
         textSpan.className = 'lrc-text-content';
         textSpan.textContent = item.text || '[Пустая строка]';
 
+        // Контейнер для кнопок управления
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'lrc-actions';
+
         const editIcon = document.createElement('div');
-        editIcon.className = 'lrc-edit-icon';
+        editIcon.className = 'lrc-action-icon lrc-edit-icon';
         editIcon.innerHTML = `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
+        
+        const deleteIcon = document.createElement('div');
+        deleteIcon.className = 'lrc-action-icon lrc-delete-icon';
+        // Иконка корзины (Material Design)
+        deleteIcon.innerHTML = `<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+
+        actionsDiv.appendChild(editIcon);
+        actionsDiv.appendChild(deleteIcon);
         
         div.appendChild(timeSpan);
         div.appendChild(textSpan);
-        div.appendChild(editIcon);
+        div.appendChild(actionsDiv); // Интегрируем контейнер вместо одиночной иконки
         
         item.el = div;
         item.elTime = timeSpan;
