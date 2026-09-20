@@ -688,8 +688,13 @@ class LrcSyncApp {
             textNode.removeEventListener('keydown', keyHandler);
 
             if (save) {
-                // Извлекаем текст, браузер сам очистит его от HTML-тегов через textContent
+                // Убираем пробелы
                 item.text = textNode.textContent.trim(); 
+                
+                // UX-защита: если строку стерли, возвращаем плейсхолдер
+                if (!item.text) {
+                    textNode.textContent = '[Пустая строка]';
+                }
             } else {
                 textNode.textContent = originalText;
             }
