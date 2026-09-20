@@ -221,3 +221,32 @@ select:hover { border-color: var(--border-hover); }
     cursor: text;
     user-select: text; /* Разрешаем выделение текста при редактировании */
 }
+
+/* Соединительная линия-индикатор от левого края карточки к Canvas */
+.lrc-line::before {
+    content: '';
+    position: absolute;
+    left: -17px;
+    top: 16px; /* Строго на оси тайм-бейджа */
+    width: 16px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.lrc-line.dragging::before {
+    background: var(--accent);
+}
+
+/* Сквозной центральный визир через всю рабочую область */
+#workspace::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    /* Используем переменную из JS, с откатом на 50% */
+    top: var(--center-y, 50%); 
+    height: 1px;
+    background: rgba(255, 255, 255, 0.35);
+    pointer-events: none;
+    z-index: 10;
+}

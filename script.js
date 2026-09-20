@@ -98,7 +98,8 @@ class LrcSyncApp {
         this.ui.main.addEventListener('wheel', (e) => {
             e.preventDefault(); 
             if (e.shiftKey) {
-                const factor = e.deltaY > 0 ? 0.9 : 1.1;
+                const wheelDelta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+                const factor = wheelDelta > 0 ? 0.9 : 1.1;
                 this.zoom = Math.max(10, Math.min(this.zoom * factor, 3000));
                 if (!this.isPlaying) this.render();
             } else {
@@ -123,24 +124,39 @@ class LrcSyncApp {
         });
 
         this.ui.lrcContainer.addEventListener('mousedown', (e) => {
-            // Блокировка Drag-and-Drop, если клик пришелся на иконку или редактируемый текст
             if (e.target.closest('.lrc-edit-icon') || e.target.isContentEditable) return;
 
             const lineEl = e.target.closest('.lrc-line');
             if (!lineEl) return;
             
+            // Блокируем дрейф времени: перемещение метки требует стабильной шкалы
+            if (this.isPlaying) this.pause();
+
             const index = parseInt(lineEl.dataset.index, 10);
-            this.dragState = { index, el: lineEl };
+            const rect = this.ui.canvas.getBoundingClientRect();
+            const cursorY = e.clientY - rect.top;
+            const itemY = (this.canvasLogicalHeight / 2) + (this.lrcData[index].time - this.centerTime) * this.zoom;
+
+            this.dragState = { 
+                index, 
+                el: lineEl,
+                grabOffsetY: cursorY - itemY,
+                canvasTop: rect.top
+            };
             lineEl.classList.add('dragging'); 
         });
 
         window.addEventListener('mousemove', (e) => {
             if (!this.dragState) return;
             
-            const rect = this.ui.canvas.getBoundingClientRect();
-            const y = e.clientY - rect.top; 
+            const cursorY = e.clientY - this.dragState.canvasTop; 
+            const halfH = this.canvasLogicalHeight / 2;
+            const targetY = cursorY - this.dragState.grabOffsetY;
             
-            this.lrcData[this.dragState.index].time = Math.max(0, this.centerTime + (y - rect.height / 2) / this.zoom);
+            // Ограничиваем диапазон [0, duration]
+            const newTime = this.centerTime + (targetY - halfH) / this.zoom;
+            this.lrcData[this.dragState.index].time = Math.max(0, Math.min(newTime, this.buffer.duration));
+            
             if (!this.isPlaying) this.render();
         });
 
@@ -315,7 +331,8 @@ class LrcSyncApp {
         const div = document.createElement('div');
         div.className = 'lrc-line';
         div.dataset.index = index;
-        
+        div.style.top = '0'; // Гарантирует абсолютный базис для translateY
+
         const timeSpan = document.createElement('div');
         timeSpan.className = 'lrc-time-badge';
         
@@ -323,7 +340,6 @@ class LrcSyncApp {
         textSpan.className = 'lrc-text-content';
         textSpan.textContent = item.text || '[Пустая строка]';
 
-        // Добавление кнопки редактирования
         const editIcon = document.createElement('div');
         editIcon.className = 'lrc-edit-icon';
         editIcon.innerHTML = `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
@@ -407,7 +423,7 @@ class LrcSyncApp {
         
         const sorted = [...this.lrcData].sort((a, b) => a.time - b.time);
         let targetTime = this.centerTime;
-        const epsilon = 0.05; 
+        const epsilon = 0.005; // 5 мс вместо 50 мс для исключения пропуска меток
 
         if (direction === 'prev') {
             for (let i = sorted.length - 1; i >= 0; i--) {
@@ -452,12 +468,21 @@ class LrcSyncApp {
         const rect = this.ui.canvas.parentElement.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
         
-        this.ui.canvas.width = rect.width * dpr;
-        this.ui.canvas.height = rect.height * dpr;
+        // Битовый сдвиг & ~1 гарантирует строго четное целое число
+        this.canvasLogicalWidth = Math.floor(rect.width) & ~1;
+        this.canvasLogicalHeight = Math.floor(rect.height) & ~1;
+        
+        // Жестко фиксируем CSS-размеры холста, чтобы избежать билинейного размытия из-за height: 100%
+        this.ui.canvas.style.width = `${this.canvasLogicalWidth}px`;
+        this.ui.canvas.style.height = `${this.canvasLogicalHeight}px`;
+
+        // Передаем точный центр в CSS для идеальной синхронизации визира рабочей области
+        this.ui.main.style.setProperty('--center-y', `${this.canvasLogicalHeight / 2}px`);
+        
+        this.ui.canvas.width = this.canvasLogicalWidth * dpr;
+        this.ui.canvas.height = this.canvasLogicalHeight * dpr;
         
         this.ctx.scale(dpr, dpr);
-        this.canvasLogicalWidth = rect.width;
-        this.canvasLogicalHeight = rect.height;
     }
 
     render() {
@@ -479,24 +504,21 @@ class LrcSyncApp {
 
         const data = this.buffer.getChannelData(0);
         const sampleRate = this.buffer.sampleRate; 
-        
+        const step = Math.max(1, Math.ceil(sampleRate / this.zoom));
+
         const startTime = this.centerTime - halfH / this.zoom;
         const endTime = this.centerTime + halfH / this.zoom;
 
-        const startSample = Math.max(0, Math.floor(startTime * sampleRate));
-        const endSample = Math.min(data.length, Math.ceil(endTime * sampleRate));
-        
-        const step = Math.max(1, Math.ceil((endSample - startSample) / height));
-
-        const startSec = Math.ceil(startTime);
+        const startSec = Math.max(0, Math.ceil(startTime));
         const endSec = Math.floor(endTime);
         
         this.ctx.font = '10px monospace';
         this.ctx.textBaseline = 'middle';
         this.ctx.textAlign = 'left';
 
+        // 1. Сетка секунд
         for (let s = startSec; s <= endSec; s++) {
-            const y = halfH + (s - this.centerTime) * this.zoom;
+            const y = Math.floor(halfH + (s - this.centerTime) * this.zoom);
             
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
             this.ctx.fillRect(0, y, halfW, 1);
@@ -505,6 +527,7 @@ class LrcSyncApp {
             this.ctx.fillText(this.formatTimeSeconds(s), 6, y - 8);
         }
 
+        // 2. Волна сигнала (с захватом граничных сэмплов)
         this.ctx.beginPath();
         this.ctx.strokeStyle = '#56b6c2'; 
         this.ctx.lineWidth = 1;
@@ -512,27 +535,33 @@ class LrcSyncApp {
         for (let y = 0; y < height; y++) {
             const t = this.centerTime + (y - halfH) / this.zoom;
             const idx = Math.floor(t * sampleRate); 
+            const endIdx = idx + step;
 
-            if (idx >= 0 && idx < data.length) {
+            // Сканируем срез, если хотя бы часть диапазона лежит внутри буфера
+            if (endIdx > 0 && idx < data.length) {
+                const scanStart = Math.max(0, idx);
+                const scanEnd = Math.min(endIdx, data.length);
+                
                 let min = 0, max = 0;
-                for (let i = 0; i < step && (idx + i) < data.length; i++) {
-                    const val = data[idx + i];
+                for (let i = scanStart; i < scanEnd; i++) {
+                    const val = data[i];
                     if (val < min) min = val;
                     if (val > max) max = val;
                 }
-                
-                this.ctx.moveTo(halfW + min * halfW * 0.9, y);
-                this.ctx.lineTo(halfW + max * halfW * 0.9, y);
+                const strokeY = y + 0.5;
+                this.ctx.moveTo(halfW + min * halfW * 0.9, strokeY);
+                this.ctx.lineTo(halfW + max * halfW * 0.9, strokeY);
             }
         }
         this.ctx.stroke();
 
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        // 3. Линии субтитров
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         this.ctx.setLineDash([4, 4]); 
         this.ctx.beginPath();
         
         this.lrcData.forEach(item => {
-            const y = halfH + (item.time - this.centerTime) * this.zoom;
+            const y = Math.floor(halfH + (item.time - this.centerTime) * this.zoom) + 0.5;
             if (y >= 0 && y <= height) {
                 this.ctx.moveTo(halfW, y); 
                 this.ctx.lineTo(width, y); 
@@ -541,27 +570,31 @@ class LrcSyncApp {
         this.ctx.stroke();
         this.ctx.setLineDash([]); 
 
+        // 4. Центральный визир
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.fillRect(0, halfH - 0.5, width, 1);
+        this.ctx.fillRect(0, Math.floor(halfH), width, 1);
     }
 
     updateLrcDOM() {
         const halfH = this.canvasLogicalHeight / 2;
         
         this.lrcData.forEach(item => {
-            const y = halfH + (item.time - this.centerTime) * this.zoom;
-            item.el.style.transform = `translateY(${y - 25}px)`; 
+            const y = Math.floor(halfH + (item.time - this.centerTime) * this.zoom);
+            
+            // Если узел далеко за экраном — скрываем и прерываем итерацию
+            if (y < -100 || y > this.canvasLogicalHeight + 100) {
+                if (item.el.style.display !== 'none') item.el.style.display = 'none';
+                return; // Отсекаем ненужные вычисления DOM transform
+            }
+            
+            if (item.el.style.display === 'none') item.el.style.display = 'flex';
+            
+            item.el.style.transform = `translateY(${y - 16}px)`; 
             
             const timeStr = this.formatTime(item.time);
             if (item.lastTimeStr !== timeStr) {
                 item.elTime.textContent = timeStr;
                 item.lastTimeStr = timeStr;
-            }
-            
-            if (y < -100 || y > this.canvasLogicalHeight + 100) {
-                if (item.el.style.display !== 'none') item.el.style.display = 'none';
-            } else {
-                if (item.el.style.display === 'none') item.el.style.display = 'flex';
             }
         });
     }
@@ -574,10 +607,11 @@ class LrcSyncApp {
     }
 
     formatTime(seconds) {
-        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-        const ms = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
-        return `${m}:${s}.${ms}`;
+        const totalCs = Math.round(seconds * 100);
+        const m = Math.floor(totalCs / 6000).toString().padStart(2, '0');
+        const s = Math.floor((totalCs % 6000) / 100).toString().padStart(2, '0');
+        const cs = (totalCs % 100).toString().padStart(2, '0');
+        return `${m}:${s}.${cs}`;
     }
 
     formatTimeSeconds(seconds) {
@@ -587,11 +621,12 @@ class LrcSyncApp {
     }
 
     formatTimeFull(seconds) {
-        const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
-        const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-        const ms = Math.floor((seconds % 1) * 100).toString().padStart(2, '0');
-        return `${h}:${m}:${s}.${ms}`;
+        const totalCs = Math.round(seconds * 100);
+        const h = Math.floor(totalCs / 360000).toString().padStart(2, '0');
+        const m = Math.floor((totalCs % 360000) / 6000).toString().padStart(2, '0');
+        const s = Math.floor((totalCs % 6000) / 100).toString().padStart(2, '0');
+        const cs = (totalCs % 100).toString().padStart(2, '0');
+        return `${h}:${m}:${s}.${cs}`;
     }
 
     export(format) {
