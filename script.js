@@ -107,7 +107,25 @@ class LrcSyncApp {
             }
         }, { passive: false });
 
+        // Делегирование событий двойного клика по тексту
+        this.ui.lrcContainer.addEventListener('dblclick', (e) => {
+            const textEl = e.target.closest('.lrc-text-content');
+            if (textEl) this.initTextEdit(textEl);
+        });
+
+        // Делегирование событий клика по иконке редактирования
+        this.ui.lrcContainer.addEventListener('click', (e) => {
+            const icon = e.target.closest('.lrc-edit-icon');
+            if (icon) {
+                const textEl = icon.parentElement.querySelector('.lrc-text-content');
+                this.initTextEdit(textEl);
+            }
+        });
+
         this.ui.lrcContainer.addEventListener('mousedown', (e) => {
+            // Блокировка Drag-and-Drop, если клик пришелся на иконку или редактируемый текст
+            if (e.target.closest('.lrc-edit-icon') || e.target.isContentEditable) return;
+
             const lineEl = e.target.closest('.lrc-line');
             if (!lineEl) return;
             
@@ -167,8 +185,9 @@ class LrcSyncApp {
         window.addEventListener('keydown', (e) => {
             if (this.ui.main.style.display !== 'flex') return;
             
-            // Блокируем горячие клавиши при вводе текста в textarea/input
-            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName) && e.target.type !== 'range') return;
+            // Блокируем горячие клавиши при вводе текста, включая contenteditable
+            const isEditingText = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
+            if (isEditingText && e.target.type !== 'range') return;
 
             switch (e.code) {
                 case 'KeyN':
@@ -303,9 +322,15 @@ class LrcSyncApp {
         const textSpan = document.createElement('div');
         textSpan.className = 'lrc-text-content';
         textSpan.textContent = item.text || '[Пустая строка]';
+
+        // Добавление кнопки редактирования
+        const editIcon = document.createElement('div');
+        editIcon.className = 'lrc-edit-icon';
+        editIcon.innerHTML = `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
         
         div.appendChild(timeSpan);
         div.appendChild(textSpan);
+        div.appendChild(editIcon);
         
         item.el = div;
         item.elTime = timeSpan;
@@ -599,6 +624,55 @@ class LrcSyncApp {
         a.click(); 
         
         URL.revokeObjectURL(url); 
+    }
+
+    // Инициализация режима редактирования текста
+    initTextEdit(textNode) {
+        if (textNode.isContentEditable) return;
+
+        const lineEl = textNode.closest('.lrc-line');
+        const index = parseInt(lineEl.dataset.index, 10);
+        const item = this.lrcData[index];
+        const originalText = item.text;
+
+        textNode.contentEditable = true;
+        textNode.focus();
+
+        // Установка каретки в конец текста
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(textNode);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // Замыкание для завершения редактирования
+        const finalizeEdit = (save) => {
+            textNode.contentEditable = false;
+            textNode.removeEventListener('blur', blurHandler);
+            textNode.removeEventListener('keydown', keyHandler);
+
+            if (save) {
+                // Извлекаем текст, браузер сам очистит его от HTML-тегов через textContent
+                item.text = textNode.textContent.trim(); 
+            } else {
+                textNode.textContent = originalText;
+            }
+        };
+
+        const blurHandler = () => finalizeEdit(true);
+        const keyHandler = (e) => {
+            if (e.code === 'Enter') {
+                e.preventDefault();
+                textNode.blur(); // Инициирует сохранение через blurHandler
+            } else if (e.code === 'Escape') {
+                e.preventDefault();
+                finalizeEdit(false); // Откат изменений
+            }
+        };
+
+        textNode.addEventListener('blur', blurHandler);
+        textNode.addEventListener('keydown', keyHandler);
     }
 }
 

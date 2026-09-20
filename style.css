@@ -180,3 +180,44 @@ select:hover { border-color: var(--border-hover); }
 }
 #modal-textarea:focus { border-color: var(--accent); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
+
+/* Иконка редактирования */
+.lrc-edit-icon {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lrc-edit-icon svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.lrc-line:hover .lrc-edit-icon {
+    opacity: 0.5;
+}
+
+.lrc-edit-icon:hover {
+    opacity: 1 !important;
+    color: var(--accent);
+}
+
+/* Состояние редактируемого текста */
+.lrc-text-content[contenteditable="true"] {
+    outline: 1px solid var(--accent);
+    background: var(--bg);
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    cursor: text;
+    user-select: text; /* Разрешаем выделение текста при редактировании */
+}
