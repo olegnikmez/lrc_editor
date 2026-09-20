@@ -6,7 +6,7 @@
     <title>LRC/SUB Sync Editor - Fluent</title>
     
     <!-- Подключение внешнего файла стилей с версией для сброса кеша -->
-    <link rel="stylesheet" href="style.css?ver=1">
+    <link rel="stylesheet" href="style.css?ver=2">
 </head>
 <body>
 
@@ -40,6 +40,7 @@
                         <button id="btn-play" class="btn-accent" style="width: 80px;">Play (S)</button>
                         <button class="btn-nav-mark" data-dir="prev">|◀ (Q)</button>
                         <button class="btn-nav-mark" data-dir="next">▶| (E)</button>
+                        <button id="btn-add-text" class="btn-accent">Добавить текст</button>
                         <button class="btn-seek" data-seek="-10">-10s</button>
                         <button class="btn-seek" data-seek="-5">-5s</button>
                         <button class="btn-seek" data-seek="-2">-2s</button>
@@ -63,7 +64,19 @@
         </div>
     </div>
 
+    <!-- Модальное окно ассимиляции данных -->
+    <div id="modal-text" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 style="margin-top: 0; color: var(--text-bright);">Ассимиляция текста</h3>
+            <textarea id="modal-textarea" rows="10" placeholder="Вставьте LRC, SUB или обычный текст. Строки без меток будут привязаны к текущему времени..."></textarea>
+            <div class="modal-actions">
+                <button id="modal-btn-cancel">Отмена</button>
+                <button id="modal-btn-save" class="btn-accent">Внедрить</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Подключение внешнего файла скриптов с версией для сброса кеша -->
-    <script src="script.js?ver=1"></script>
+    <script src="script.js?ver=2"></script>
 </body>
 </html>

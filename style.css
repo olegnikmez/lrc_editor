@@ -152,3 +152,31 @@ select {
     font-family: inherit; font-size: 12px;
 }
 select:hover { border-color: var(--border-hover); }
+
+.modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+}
+.modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    width: 600px;
+    max-width: 90vw;
+    display: flex; flex-direction: column; gap: 16px;
+    box-shadow: 0 16px 64px rgba(0,0,0,0.6);
+}
+#modal-textarea {
+    width: 100%; resize: vertical;
+    background: var(--bg); color: var(--text-bright);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px; font-family: monospace; font-size: 13px;
+    outline: none; box-sizing: border-box;
+}
+#modal-textarea:focus { border-color: var(--accent); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
