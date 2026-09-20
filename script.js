@@ -83,6 +83,15 @@ class LrcSyncApp {
         this.ui.modalBtnSave.addEventListener('click', () => {
             this.injectTextData();
         });
+
+        // --- Отправка текста по Enter ---
+        this.ui.modalTextarea.addEventListener('keydown', (e) => {
+            // Если нажат Enter и НЕ нажат Shift
+            if (e.code === 'Enter' && !e.shiftKey) {
+                e.preventDefault(); // Предотвращаем добавление переноса строки
+                this.injectTextData(); // Запускаем процесс ассимиляции текста
+            }
+        });
     }
 
     initWorkspaceEvents() {
